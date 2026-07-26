@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 
 from pydantic import BaseModel, Field
-from langchain_openai import ChatOpenAI
+from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
@@ -24,13 +24,12 @@ def load_env_file() -> None:
 
 load_env_file()
 
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY") or os.getenv("OPEN_AI_KEY")
-if not OPENAI_API_KEY:
-    raise RuntimeError("Missing OpenAI API key. Set OPENAI_API_KEY or OPEN_AI_KEY in the backend .env file.")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+if not GROQ_API_KEY:
+    raise RuntimeError("Missing Groq API key. Set GROQ_API_KEY in the backend .env file.")
 
-os.environ["OPENAI_API_KEY"] = OPENAI_API_KEY
+os.environ["GROQ_API_KEY"] = GROQ_API_KEY
 
-# Import from your tools folder!
 from tools.finhub_tool import fetch_stock_news
 
 # ==========================================
@@ -51,8 +50,6 @@ class NewsAgentOutput(BaseModel):
 # ==========================================
 # 2. CORE NEWS AGENT LOGIC
 # ==========================================
-llm = ChatOpenAI(model="gpt-4o", temperature=0.1).with_structured_output(NewsAgentOutput)
-
 SYSTEM_PROMPT = """
 You are a Senior Financial News Analyst Agent specializing in market sentiment analysis.
 You are analyzing recent news coverage for ticker: {ticker}.
@@ -80,6 +77,12 @@ def run_news_agent(ticker: str) -> NewsAgentOutput:
             bearish_risks=["Lack of news visibility"],
             summary_explanation=f"No recent news articles were retrieved for {ticker} over the past 7 days."
         )
+
+    # Replaced with ChatGroq
+    llm = ChatGroq(
+        model="llama-3.3-70b-versatile", 
+        temperature=0.1
+    ).with_structured_output(NewsAgentOutput)
 
     formatted_news = "\n\n".join([
         f"Headline: {art['headline']}\nSummary: {art['summary']}\nSource: {art['source']}"
