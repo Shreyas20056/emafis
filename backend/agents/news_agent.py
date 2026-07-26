@@ -1,6 +1,34 @@
+import os
+from pathlib import Path
+
 from pydantic import BaseModel, Field
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
+
+BACKEND_DIR = Path(__file__).resolve().parent.parent
+
+
+def load_env_file() -> None:
+    env_path = BACKEND_DIR / ".env"
+    if not env_path.exists():
+        return
+
+    for line in env_path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+
+        key, value = line.split("=", 1)
+        os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
+
+
+load_env_file()
+
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY") or os.getenv("OPEN_AI_KEY")
+if not OPENAI_API_KEY:
+    raise RuntimeError("Missing OpenAI API key. Set OPENAI_API_KEY or OPEN_AI_KEY in the backend .env file.")
+
+os.environ["OPENAI_API_KEY"] = OPENAI_API_KEY
 
 # Import from your tools folder!
 from tools.finhub_tool import fetch_stock_news
