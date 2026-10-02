@@ -23,7 +23,9 @@ def load_env_file() -> None:
 
 load_env_file()
 
+from core.llm import get_groq_llm
 from tools.macro_tool import fetch_macro_indicators
+
 
 
 # ==========================================
@@ -78,12 +80,11 @@ def run_macro_agent(ticker: str) -> MacroAgentOutput:
     api_key = os.getenv("GROQ_API_KEY")
     if api_key:
         try:
-            llm = ChatGroq(
-                model="llama-3.3-70b-versatile", 
+            llm = get_groq_llm(
                 temperature=0.1,
-                groq_api_key=api_key,
                 model_kwargs={"response_format": {"type": "json_object"}}
             )
+
 
             formatted_metrics = f"""
             10-Year Treasury Yield: {metrics.get('10_Yr_Treasury_Yield', {}).get('value', 'N/A')}% (1-Month Change: {metrics.get('10_Yr_Treasury_Yield', {}).get('1m_change_pct', 'N/A')}%)

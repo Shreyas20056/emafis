@@ -1,5 +1,7 @@
 from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
 from datetime import datetime, date
+
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 
@@ -34,8 +36,12 @@ def get_portfolio():
             "holdings": [],
             "updated_at": datetime.utcnow()
         }
-        portfolio_collection.insert_one(doc)
+        res = portfolio_collection.insert_one(doc)
+        doc["_id"] = str(res.inserted_id)
+    else:
+        doc["_id"] = str(doc["_id"])
     return doc
+
 
 
 def run_all_agents_sync(ticker: str) -> dict:
@@ -211,3 +217,81 @@ async def analyze_portfolio():
         portfolio_summary=summary,
         holdings=results
     )
+
+
+class PortfolioChatRequest(BaseModel):
+
+    message: str
+    history: list[dict] = []
+
+
+@router.post("/chat")
+def chat_portfolio(req: PortfolioChatRequest):
+    """
+    Real-time Multi-Agent Portfolio Chat Advisor endpoint.
+    Discusses investment strategy, asset allocation, dip buying, and risk management.
+    """
+    doc = get_portfolio()
+    holdings = doc.get("holdings", [])
+
+    holdings_summary = []
+    total_val = 0.0
+    for h in holdings:
+        t = h["ticker"]
+        q = h["quantity"]
+        p = h["avg_buy_price"]
+        cur = get_current_price(t) or p
+        val = cur * q
+        total_val += val
+        pnl = ((cur - p) / p * 100) if p > 0 else 0
+        holdings_summary.append(f"{t}: {q} qty @ ₹{p:.2f} (Current ₹{cur:.2f}, PnL {pnl:+.2f}%)")
+
+    portfolio_context = "\n".join(holdings_summary) if holdings_summary else "No current positions (empty portfolio)."
+
+    user_msg = req.message.strip()
+    if not user_msg:
+        raise HTTPException(400, "Message cannot be empty")
+
+    from core.llm import get_groq_llm
+    from langchain_core.prompts import ChatPromptTemplate
+
+    system_prompt = """
+You are the EMAFIS Portfolio Intelligence Chat Assistant, a senior SEBI-style wealth manager advising on Indian equity portfolios.
+You provide real-time investment advice, asset allocation strategies, dip buying options, and risk management plans.
+
+Current User Portfolio Context (Values in ₹ INR):
+Total Asset Valuation: ₹{total_val:.2f}
+Holdings:
+{portfolio_context}
+
+Rules:
+1. Always frame prices and portfolio values in Indian Rupees (₹).
+2. Give clear, strategic, and actionable advice tailored to NIFTY 50 and NIFTY SmallCap Indian equities.
+3. Be professional, honest about risk, and concise (max 160 words).
+"""
+
+    try:
+        llm = get_groq_llm(temperature=0.3)
+        prompt = ChatPromptTemplate.from_messages([
+            ("system", system_prompt),
+            ("human", "{user_message}")
+        ])
+        chain = prompt | llm
+        res = chain.invoke({
+            "total_val": total_val,
+            "portfolio_context": portfolio_context,
+            "user_message": user_msg
+        })
+        reply_text = str(res.content)
+    except Exception as e:
+        print(f"Portfolio chat Groq fallback ({e})")
+        reply_text = (
+            f"Based on your current portfolio valuation of ₹{total_val:.2f} across {len(holdings)} holdings: "
+            f"For your query '{user_msg}', consider maintaining a balanced allocation across defensive NIFTY 50 leaders "
+            f"and high-growth SmallCap stocks. Use systematic dip buying (SIP/staggered entry) during market corrections."
+        )
+
+    return {
+        "reply": reply_text,
+        "timestamp": datetime.utcnow().isoformat()
+    }

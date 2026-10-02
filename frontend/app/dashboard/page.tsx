@@ -17,15 +17,17 @@ const QUICK_TICKERS = [
   "TCS",
   "INFY",
   "HDFCBANK",
-  "NVDA",
-  "AAPL",
-  "MSFT",
-  "TSLA",
+  "ICICIBANK",
+  "TATAMOTORS",
+  "SBIN",
+  "SUZLON",
+  "ZOMATO",
+  "CDSL",
 ];
 
 export default function DashboardPage() {
-  const [ticker, setTicker] = useState("NVDA");
-  const [searchInput, setSearchInput] = useState("NVDA");
+  const [ticker, setTicker] = useState("RELIANCE");
+  const [searchInput, setSearchInput] = useState("RELIANCE");
   const [analysisData, setAnalysisData] = useState<any>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -50,8 +52,9 @@ export default function DashboardPage() {
   };
 
   useEffect(() => {
-    handleRunAnalysis("NVDA");
+    handleRunAnalysis("RELIANCE");
   }, []);
+
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();

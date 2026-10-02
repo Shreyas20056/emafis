@@ -109,9 +109,10 @@ export default function RecommendationCard({
             </span>
             {price && (
               <span className="font-mono text-xs font-semibold text-cyan-400">
-                ${price.toFixed(2)}
+                ₹{price.toFixed(2)}
               </span>
             )}
+
           </div>
           <span className="mt-1 text-[10px] text-slate-500">
             Score range: -1.0 to +1.0

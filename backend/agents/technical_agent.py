@@ -22,7 +22,9 @@ def load_env_file() -> None:
 
 load_env_file()
 
+from core.llm import get_groq_llm
 from tools.technical_tool import fetch_technical_indicators
+
 
 
 # ==========================================
@@ -69,11 +71,8 @@ def run_technical_agent(ticker: str) -> TechnicalAgentOutput:
     api_key = os.getenv("GROQ_API_KEY")
     if api_key:
         try:
-            llm = ChatGroq(
-                model="llama-3.3-70b-versatile", 
-                temperature=0.1,
-                groq_api_key=api_key
-            ).with_structured_output(TechnicalAgentOutput)
+            llm = get_groq_llm(temperature=0.1).with_structured_output(TechnicalAgentOutput)
+
 
             formatted_metrics = f"""
             Current Price: ${metrics.get('current_price')}

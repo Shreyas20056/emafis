@@ -3,16 +3,25 @@ import yfinance as yf
 def fetch_fundamental_metrics(ticker: str) -> dict:
     """
     Fetches core fundamental valuation and profitability metrics
-    from Yahoo Finance (info dict).
+    from Yahoo Finance info dict for Indian (NSE) stocks.
     """
+    symbol = ticker.strip().upper()
+    if not symbol.endswith((".NS", ".BO")):
+        symbol = f"{symbol}.NS"
+
     try:
-        stock = yf.Ticker(ticker)
+        stock = yf.Ticker(symbol)
         info = stock.info or {}
 
-        if not info or 'regularMarketPrice' not in info and 'currentPrice' not in info:
+        if not info or ('regularMarketPrice' not in info and 'currentPrice' not in info and 'previousClose' not in info):
+            # Try raw symbol if .NS failed
+            stock = yf.Ticker(ticker.strip().upper())
+            info = stock.info or {}
+
+        if not info:
             return {}
 
-        current_price = info.get('currentPrice') or info.get('regularMarketPrice', 0.0)
+        current_price = info.get('currentPrice') or info.get('regularMarketPrice') or info.get('previousClose', 0.0)
         
         return {
             "current_price": round(float(current_price), 2),

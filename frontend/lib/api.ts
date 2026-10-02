@@ -64,7 +64,6 @@ export async function loginApi(email: string, password: string): Promise<{ token
   });
 }
 
-
 export async function getMeApi(): Promise<{ user: any }> {
   return apiRequest("/api/auth/me");
 }
@@ -82,6 +81,10 @@ export async function getChartDataApi(ticker: string, period: string = "3mo") {
 
 export async function getLatestAnalysisApi(ticker: string) {
   return apiRequest(`/api/analyze/${encodeURIComponent(ticker)}/latest`);
+}
+
+export async function getRecommendationsHistoryApi(limit: number = 20) {
+  return apiRequest(`/api/recommendations/history?limit=${limit}`);
 }
 
 // Portfolio API Calls
@@ -119,6 +122,13 @@ export async function recordTradeApi(trade: { ticker: string; action: "BUY" | "S
 export async function analyzePortfolioApi() {
   return apiRequest("/api/portfolio/analyze", {
     method: "POST",
+  });
+}
+
+export async function chatPortfolioApi(message: string, history: any[] = []) {
+  return apiRequest("/api/portfolio/chat", {
+    method: "POST",
+    body: JSON.stringify({ message, history }),
   });
 }
 

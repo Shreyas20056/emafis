@@ -138,21 +138,22 @@ export default function PortfolioTable({
                       {h.ticker}
                     </td>
                     <td className="px-4 py-3 font-mono">{h.quantity}</td>
-                    <td className="px-4 py-3 font-mono">${h.avg_buy_price.toFixed(2)}</td>
+                    <td className="px-4 py-3 font-mono">₹{h.avg_buy_price.toFixed(2)}</td>
                     <td className="px-4 py-3 font-mono">
-                      ${current.toFixed(2)}
+                      ₹{current.toFixed(2)}
                     </td>
                     <td className="px-4 py-3 font-mono">
                       <div className={`flex items-center gap-1 font-bold ${isPos ? "text-emerald-400" : "text-rose-400"}`}>
                         {isPos ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />}
                         <span>
-                          {isPos ? "+" : ""}${pnl.toFixed(2)} ({isPos ? "+" : ""}{pnlPct.toFixed(2)}%)
+                          {isPos ? "+" : ""}₹{pnl.toFixed(2)} ({isPos ? "+" : ""}{pnlPct.toFixed(2)}%)
                         </span>
                       </div>
                     </td>
                     <td className="px-4 py-3">
                       {getActionBadge(h.portfolio_action || h.stock_action)}
                     </td>
+
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-2">
                         <button

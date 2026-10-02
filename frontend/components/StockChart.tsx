@@ -73,7 +73,7 @@ export default function StockChart({ ticker }: StockChartProps) {
           {data.length > 0 && (
             <div className="mt-1 flex items-baseline gap-2">
               <span className="font-mono text-xl font-bold text-slate-100">
-                ${lastPrice.toFixed(2)}
+                ₹{lastPrice.toFixed(2)}
               </span>
               <span
                 className={`flex items-center font-mono text-xs font-semibold ${
@@ -86,10 +86,11 @@ export default function StockChart({ ticker }: StockChartProps) {
                   <TrendingDown className="mr-0.5 h-3.5 w-3.5" />
                 )}
                 {isPositive ? "+" : ""}
-                {priceChange.toFixed(2)} ({isPositive ? "+" : ""}
+                ₹{priceChange.toFixed(2)} ({isPositive ? "+" : ""}
                 {priceChangePct.toFixed(2)}%)
               </span>
             </div>
+
           )}
         </div>
 
@@ -160,8 +161,9 @@ export default function StockChart({ ticker }: StockChartProps) {
                   fontSize: "12px",
                   color: "#e2e8f0",
                 }}
-                formatter={(value: any) => [`$${Number(value).toFixed(2)}`, "Close"]}
+                formatter={(value: any) => [`₹${Number(value).toFixed(2)}`, "Close Price"]}
               />
+
               <Area
                 type="monotone"
                 dataKey="close"

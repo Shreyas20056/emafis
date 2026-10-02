@@ -7,6 +7,8 @@ import Footer from "@/components/Footer";
 import PortfolioTable, { Holding } from "@/components/PortfolioTable";
 import AddHoldingModal from "@/components/AddHoldingModal";
 import TradeModal from "@/components/TradeModal";
+import PortfolioChat from "@/components/PortfolioChat";
+
 import {
   getPortfolioApi,
   addHoldingApi,
@@ -172,7 +174,7 @@ export default function PortfolioPage() {
                 Total Invested Capital
               </span>
               <p className="mt-2 font-mono text-2xl font-extrabold text-slate-100">
-                ${totalInvested.toFixed(2)}
+                ₹{totalInvested.toFixed(2)}
               </p>
               <span className="mt-1 text-[10px] text-slate-500">
                 Combined cost basis
@@ -184,7 +186,7 @@ export default function PortfolioPage() {
                 Current Market Value
               </span>
               <p className="mt-2 font-mono text-2xl font-extrabold text-cyan-300">
-                ${totalCurrent.toFixed(2)}
+                ₹{totalCurrent.toFixed(2)}
               </p>
               <span className="mt-1 text-[10px] text-slate-500">
                 Live asset valuation
@@ -198,7 +200,7 @@ export default function PortfolioPage() {
               <div className={`mt-2 flex items-center gap-1 font-mono text-2xl font-extrabold ${isPositive ? "text-emerald-400" : "text-rose-400"}`}>
                 {isPositive ? <TrendingUp className="h-5 w-5" /> : <TrendingDown className="h-5 w-5" />}
                 <span>
-                  {isPositive ? "+" : ""}${overallPnL.toFixed(2)}
+                  {isPositive ? "+" : ""}₹{overallPnL.toFixed(2)}
                 </span>
               </div>
               <span className={`mt-1 text-[10px] font-mono font-bold ${isPositive ? "text-emerald-400" : "text-rose-400"}`}>
@@ -245,6 +247,10 @@ export default function PortfolioPage() {
               isAnalyzing={isAnalyzing}
             />
           )}
+
+          {/* Real-Time Portfolio AI Chat Advisor */}
+          <PortfolioChat />
+
 
           {/* AI Rebalancing Explanations Section */}
           {holdings.some((h) => h.xai_summary) && (

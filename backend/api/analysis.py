@@ -97,19 +97,23 @@ async def analyze_stock(ticker: str):
         )
 
         # Save for learning + history
-        recommendations_collection.insert_one({
-            "ticker": ticker,
-            "action": decision["action"],
-            "confidence": decision["confidence"],
-            "weighted_score": decision["weighted_score"],
-            "market_regime": decision["market_regime"],
-            "dynamic_weights": decision["dynamic_weights"],
-            "agent_scores": decision["scores"],
-            "price_at_recommendation": current_price,
-            "xai_explanation": xai_text,
-            "created_at": datetime.utcnow(),
-            "evaluated": False
-        })
+        try:
+            rec_id = recommendations_collection.insert_one({
+                "ticker": ticker,
+                "action": decision["action"],
+                "confidence": decision["confidence"],
+                "weighted_score": decision["weighted_score"],
+                "market_regime": decision["market_regime"],
+                "dynamic_weights": decision["dynamic_weights"],
+                "agent_scores": decision["scores"],
+                "price_at_recommendation": current_price,
+                "xai_explanation": xai_text,
+                "created_at": datetime.utcnow(),
+                "evaluated": False
+            }).inserted_id
+            print(f"📌 Saved recommendation to MongoDB collection 'recommendations' (ID: {rec_id})")
+        except Exception as db_err:
+            print(f"⚠️ Error saving recommendation to MongoDB: {db_err}")
 
         return response
 
@@ -123,6 +127,16 @@ def get_chart_data(ticker: str, period: str = "3mo"):
     return {"ticker": ticker.upper(), "candles": data}
 
 
+@router.get("/recommendations/history")
+def get_recommendations_history(limit: int = 20):
+    docs = list(recommendations_collection.find({}, sort=[("created_at", -1)]).limit(limit))
+    for d in docs:
+        d["_id"] = str(d["_id"])
+        if isinstance(d.get("created_at"), datetime):
+            d["created_at"] = d["created_at"].isoformat()
+    return {"recommendations": docs}
+
+
 @router.get("/analyze/{ticker}/latest")
 def get_latest_analysis(ticker: str):
     ticker = ticker.upper().strip()
@@ -133,4 +147,8 @@ def get_latest_analysis(ticker: str):
     if not doc:
         raise HTTPException(status_code=404, detail="No previous analysis found")
     doc["_id"] = str(doc["_id"])
+    if isinstance(doc.get("created_at"), datetime):
+        doc["created_at"] = doc["created_at"].isoformat()
+    return doc
+
     return doc

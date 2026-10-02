@@ -1,6 +1,7 @@
 import os
 from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
+from core.llm import get_groq_llm
 
 
 def generate_xai_explanation(
@@ -19,11 +20,8 @@ def generate_xai_explanation(
         if not api_key:
             raise ValueError("GROQ_API_KEY environment variable is not set")
 
-        llm = ChatGroq(
-            model="llama-3.3-70b-versatile",
-            temperature=0.25,
-            groq_api_key=api_key
-        )
+        llm = get_groq_llm(temperature=0.25)
+
 
         prompt = ChatPromptTemplate.from_messages([
             ("system", """You are the Explainable AI module of EMAFIS (Explainable Multi-Agent Financial Intelligence System).

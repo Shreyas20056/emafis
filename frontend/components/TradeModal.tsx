@@ -142,17 +142,18 @@ export default function TradeModal({
 
           <div>
             <label className="block font-mono text-[11px] uppercase tracking-wider text-slate-400 mb-1">
-              Executed Trade Price ($ / ₹)
+              Executed Trade Price (₹ INR)
             </label>
             <input
               type="number"
               step="any"
               value={price}
               onChange={(e) => setPrice(e.target.value)}
-              placeholder="125.00"
+              placeholder="2450.00"
               className="w-full rounded-lg border border-slate-800 bg-slate-950 px-3.5 py-2 font-mono text-xs text-slate-100 placeholder-slate-600 focus:border-cyan-500 focus:outline-none"
             />
           </div>
+
 
           <div className="flex justify-end gap-2 pt-2">
             <button
