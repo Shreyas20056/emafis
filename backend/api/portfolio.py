@@ -3,21 +3,22 @@ from datetime import datetime, date
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 
-from app.database import portfolio_collection
-from app.models.schemas import (
+from database import portfolio_collection
+from models.schemas import (
     HoldingCreate, HoldingUpdate, TradeRequest,
     PortfolioAnalysisResponse, PortfolioActionResult, PortfolioSummary
 )
-from app.core.portfolio_logic import get_portfolio_action
-from app.core.decision_engine import generate_final_decision
-from app.core.xai import generate_xai_explanation
-from app.services.market_data import get_current_price
+from core.portfolio_logic import get_portfolio_action
+from core.decision_engine import generate_final_decision
+from core.xai import generate_xai_explanation
+from services.market_data import get_current_price
 
-from app.agents.news_agent import run_news_agent
-from app.agents.technical_agent import run_technical_agent
-from app.agents.risk_agent import run_risk_agent
-from app.agents.macro_agent import run_macro_agent
-from app.agents.fundamental_agent import run_fundamental_agent
+from agents.news_agent import run_news_agent
+from agents.technical_agent import run_technical_agent
+from agents.risk_agent import run_risk_agent
+from agents.macro_agent import run_macro_agent
+from agents.fundamental_agent import run_fundamental_agent
+
 
 router = APIRouter(prefix="/api/portfolio", tags=["Portfolio"])
 executor = ThreadPoolExecutor(max_workers=6)

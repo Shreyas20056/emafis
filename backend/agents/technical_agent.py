@@ -1,33 +1,28 @@
 import os
+import sys
 from pathlib import Path
 from pydantic import BaseModel, Field
 from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
 
-from tools.technical_tool import fetch_technical_indicators
-
+# Ensure backend directory is in sys.path
 BACKEND_DIR = Path(__file__).resolve().parent.parent
+if str(BACKEND_DIR) not in sys.path:
+    sys.path.insert(0, str(BACKEND_DIR))
 
 def load_env_file() -> None:
     env_path = BACKEND_DIR / ".env"
-    if not env_path.exists():
-        return
-
-    for line in env_path.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-
-        key, value = line.split("=", 1)
-        os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
+    if env_path.exists():
+        for line in env_path.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, value = line.strip().split("=", 1)
+            os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
 
 load_env_file()
 
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-if not GROQ_API_KEY:
-    raise RuntimeError("Missing Groq API key. Set GROQ_API_KEY in the backend .env file.")
-
-os.environ["GROQ_API_KEY"] = GROQ_API_KEY
+from tools.technical_tool import fetch_technical_indicators
 
 
 # ==========================================
@@ -52,11 +47,10 @@ You are evaluating the recent technical indicators for ticker: {ticker}.
 Analyze the provided technical metrics:
 1. RSI: Below 30 is Oversold (Bullish potential), Above 70 is Overbought (Bearish potential).
 2. Moving Averages: Price above 20-SMA and 50-SMA indicates an Uptrend.
-3. MACD: Bullish crossover is a strong buy signal; Bearish crossover is a sell signal.
+3. MACD: Bullish crossover is a buy signal; Bearish crossover is a sell signal.
 4. Bollinger Bands: Price near BB Lower indicates potential bounce; near BB Upper indicates resistance.
 
-Determine an overall technical trend score between -1.0 (Very Bearish) and +1.0 (Very Bullish).
-DO NOT invent price levels or indicators not present in the data.
+Determine an overall technical trend score between -1.0 and +1.0.
 """
 
 def run_technical_agent(ticker: str) -> TechnicalAgentOutput:
@@ -72,41 +66,78 @@ def run_technical_agent(ticker: str) -> TechnicalAgentOutput:
             summary_explanation=f"Could not retrieve sufficient price history for {ticker} to compute technical indicators."
         )
 
-    # Replaced with ChatGroq
-    llm = ChatGroq(
-        model="llama-3.3-70b-versatile", 
-        temperature=0.1
-    ).with_structured_output(TechnicalAgentOutput)
+    api_key = os.getenv("GROQ_API_KEY")
+    if api_key:
+        try:
+            llm = ChatGroq(
+                model="llama-3.3-70b-versatile", 
+                temperature=0.1,
+                groq_api_key=api_key
+            ).with_structured_output(TechnicalAgentOutput)
 
-    formatted_metrics = f"""
-    Current Price: ${metrics['current_price']}
-    20-Day SMA: ${metrics['sma_20']}
-    50-Day SMA: ${metrics['sma_50']} (Trend vs 50D: {metrics['trend_50d']})
-    RSI (14-period): {metrics['rsi']}
-    MACD Line: {metrics['macd']} | MACD Signal: {metrics['macd_signal']}
-    MACD Crossover Event: {metrics['macd_crossover']}
-    Bollinger Bands: Upper ${metrics['bb_upper']} | Lower ${metrics['bb_lower']}
-    """
+            formatted_metrics = f"""
+            Current Price: ${metrics.get('current_price')}
+            20-Day SMA: ${metrics.get('sma_20')}
+            50-Day SMA: ${metrics.get('sma_50')} (Trend vs 50D: {metrics.get('trend_50d')})
+            RSI (14-period): {metrics.get('rsi')}
+            MACD Line: {metrics.get('macd')} | MACD Signal: {metrics.get('macd_signal')}
+            MACD Crossover Event: {metrics.get('macd_crossover')}
+            Bollinger Bands: Upper ${metrics.get('bb_upper')} | Lower ${metrics.get('bb_lower')}
+            """
 
-    prompt = ChatPromptTemplate.from_messages([
-        ("system", SYSTEM_PROMPT),
-        ("human", "Here are the computed technical indicators:\n\n{metrics_text}")
-    ])
+            prompt = ChatPromptTemplate.from_messages([
+                ("system", SYSTEM_PROMPT),
+                ("human", "Here are the computed technical indicators:\n\n{metrics_text}")
+            ])
 
-    chain = prompt | llm
-    result = chain.invoke({"ticker": ticker, "metrics_text": formatted_metrics})
-    return result
+            chain = prompt | llm
+            return chain.invoke({"ticker": ticker, "metrics_text": formatted_metrics})
+        except Exception as e:
+            print(f"Technical agent Groq fallback triggered ({e})")
+
+    rsi = metrics.get("rsi", 50.0)
+    macd_cross = metrics.get("macd_crossover", "Neutral")
+    trend_50d = metrics.get("trend_50d", "Neutral")
+
+    score = 0.0
+    signals = []
+    if rsi < 30:
+        score += 0.4
+        signals.append(f"RSI Oversold ({rsi})")
+    elif rsi > 70:
+        score -= 0.4
+        signals.append(f"RSI Overbought ({rsi})")
+
+    if macd_cross == "Bullish":
+        score += 0.35
+        signals.append("MACD Bullish Crossover")
+    elif macd_cross == "Bearish":
+        score -= 0.35
+        signals.append("MACD Bearish Crossover")
+
+    if trend_50d == "Bullish":
+        score += 0.25
+        signals.append("Trading above 50-day SMA")
+    else:
+        score -= 0.25
+        signals.append("Trading below 50-day SMA")
+
+    score = max(-1.0, min(1.0, score))
+    condition = "Bullish Momentum" if score > 0.25 else ("Bearish Breakdown" if score < -0.25 else "Neutral Consolidation")
+
+    return TechnicalAgentOutput(
+        ticker=ticker,
+        technical_score=round(score, 2),
+        confidence=0.80,
+        key_signals=signals or ["Consolidation near moving averages"],
+        trend_condition=condition,
+        summary_explanation=f"Technical chart evaluation for {ticker}: RSI = {rsi}, MACD = {macd_cross}, Trend = {trend_50d}."
+    )
 
 
 if __name__ == "__main__":
     ticker = "NVDA"
     print(f"Running Technical Analysis Agent for {ticker}...")
     output = run_technical_agent(ticker)
-    
     print("\n--- TECHNICAL AGENT RESULT ---")
-    print(f"Ticker: {output.ticker}")
-    print(f"Technical Score: {output.technical_score}")
-    print(f"Confidence: {output.confidence}")
-    print(f"Trend Condition: {output.trend_condition}")
-    print(f"Key Signals: {output.key_signals}")
-    print(f"Summary: {output.summary_explanation}")
+    print(output)

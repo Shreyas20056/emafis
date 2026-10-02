@@ -4,23 +4,24 @@ uvicorn[standard]>=0.30.0
 websockets>=13.0
 pydantic>=2.8.0
 
+# --- Database & Vector Storage ---
+pymongo>=4.6.0
+psycopg2-binary>=2.9.9
+pgvector>=0.3.0
+sqlalchemy>=2.0.30
+
 # --- Multi-Agent Framework & Orchestration ---
 langgraph>=0.2.0
 langchain>=0.3.0
 langchain-openai>=0.2.0
 langchain-community>=0.3.0
+langchain-groq>=0.2.0
 
 # --- Financial Data & Live Market APIs ---
 yfinance>=0.2.40
 finnhub-python>=2.4.14
 pandas>=2.2.0
 numpy>=1.26.0
-ta-lib-bin>=0.4.28; platform_system=="Windows"  # Pre-compiled TA-Lib binaries for indicator calculations
-
-# --- Database & Vector Storage (PostgreSQL RAG) ---
-psycopg2-binary>=2.9.9
-pgvector>=0.3.0
-sqlalchemy>=2.0.30
 
 # --- Evaluation, Accuracy & Agent Tracing ---
 deepeval>=3.0.0
@@ -29,4 +30,4 @@ pytest>=8.2.0
 # --- Environment & Utilities ---
 python-dotenv>=1.0.1
 requests>=2.32.0
-httpx>=0.27.0
+httpx>=0.27.0

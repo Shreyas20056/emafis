@@ -1,6 +1,7 @@
 from typing import Dict
-from app.core.weighting import detect_market_regime
-from app.core.learning import compute_adaptive_weights, get_agent_performance
+from core.weighting import detect_market_regime
+from core.learning import compute_adaptive_weights, get_agent_performance
+
 
 
 def generate_final_decision(agent_results: Dict) -> dict:

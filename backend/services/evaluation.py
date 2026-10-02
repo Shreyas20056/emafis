@@ -1,7 +1,8 @@
 import yfinance as yf
 from datetime import datetime, timedelta
-from app.database import recommendations_collection
-from app.core.learning import update_agent_performance
+from database import recommendations_collection
+from core.learning import update_agent_performance
+
 
 def evaluate_pending_recommendations(days: int = 5):
     """

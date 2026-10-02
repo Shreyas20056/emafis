@@ -35,7 +35,8 @@ def compute_adaptive_weights(regime: str, agent_performance: Dict[str, float] = 
     Final Adaptive Dynamic Weighting.
     Combines regime-based weights + historical agent accuracy.
     """
-    from app.core.weighting import compute_dynamic_weights
+    from core.weighting import compute_dynamic_weights
+
 
     if agent_performance is None:
         agent_performance = get_agent_performance()

@@ -1,11 +1,20 @@
+import sys
+from pathlib import Path
+from datetime import datetime
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
-from datetime import datetime
 
-from app.database import init_db
-from app.api.analysis import router as analysis_router
-from app.api.portfolio import router as portfolio_router
+# Add backend directory to sys.path
+BACKEND_DIR = Path(__file__).resolve().parent
+if str(BACKEND_DIR) not in sys.path:
+    sys.path.insert(0, str(BACKEND_DIR))
+
+from database import init_db
+from api.analysis import router as analysis_router
+from api.portfolio import router as portfolio_router
+from api.auth import router as auth_router
+
 
 
 @asynccontextmanager
@@ -26,7 +35,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000", "*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -35,6 +44,8 @@ app.add_middleware(
 # Routers
 app.include_router(analysis_router)
 app.include_router(portfolio_router)
+app.include_router(auth_router)
+
 
 
 @app.get("/")
@@ -54,8 +65,8 @@ def health():
 
 @app.get("/api/agent-performance")
 def agent_performance():
-    from app.core.learning import get_agent_performance
+    from core.learning import get_agent_performance
     return {
         "agent_performance": get_agent_performance(),
         "updated_at": datetime.utcnow().isoformat()
-    }
+    }
