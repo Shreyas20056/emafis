@@ -44,14 +44,8 @@ def get_portfolio():
 
 
 
-def run_all_agents_sync(ticker: str) -> dict:
-    return {
-        "news": run_news_agent(ticker),
-        "technical": run_technical_agent(ticker),
-        "risk": run_risk_agent(ticker),
-        "macro": run_macro_agent(ticker),
-        "fundamental": run_fundamental_agent(ticker),
-    }
+from api.analysis import run_all_agents_parallel
+
 
 
 @router.get("")
@@ -178,7 +172,8 @@ async def analyze_portfolio():
         quantity = h["quantity"]
         avg_price = h["avg_buy_price"]
 
-        agent_results = await loop.run_in_executor(executor, run_all_agents_sync, ticker)
+        agent_results = await run_all_agents_parallel(ticker)
+
         decision = generate_final_decision(agent_results)
         current_price = get_current_price(ticker)
 

@@ -37,15 +37,22 @@ users_collection: Collection = db["users"]
 
 
 def init_db():
-    """Create useful indexes safely"""
+    """Create useful indexes safely and seed initial data"""
     try:
         recommendations_collection.create_index([("ticker", 1), ("created_at", -1)])
         recommendations_collection.create_index([("evaluated", 1)])
         portfolio_collection.create_index("user_id", unique=True)
         users_collection.create_index("email", unique=True)
-        print("✅ Database connected & indexes ready")
+        agent_performance_collection.create_index("agent", unique=True)
+        print("[OK] Database connected & indexes ready")
+
+        # Initialize agent performance collection in MongoDB
+        from core.learning import init_agent_performance
+        init_agent_performance()
     except Exception as e:
-        print(f"⚠️ Could not create DB indexes (MongoDB offline?): {e}")
+        print(f"[WARN] Could not initialize DB (MongoDB offline?): {e}")
+
+
 
 
 def get_db():

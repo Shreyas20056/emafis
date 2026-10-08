@@ -19,11 +19,12 @@ from api.auth import router as auth_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    print("🚀 Starting EMAFIS API...")
+    print("[INFO] Starting EMAFIS API...")
     init_db()
-    print("✅ Database initialized")
+    print("[OK] Database initialized")
     yield
-    print("👋 EMAFIS API stopped")
+    print("[INFO] EMAFIS API stopped")
+
 
 
 app = FastAPI(

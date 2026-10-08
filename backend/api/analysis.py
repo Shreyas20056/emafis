@@ -1,12 +1,14 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from datetime import datetime
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
+from typing import Optional
 
 from models.schemas import AnalysisResponse, AgentContribution
 from core.decision_engine import generate_final_decision
 from core.xai import generate_xai_explanation
 from services.market_data import get_current_price, get_ohlcv
+from services.evaluation import evaluate_pending_recommendations
 from database import recommendations_collection
 
 from agents.news_agent import run_news_agent
@@ -17,16 +19,28 @@ from agents.fundamental_agent import run_fundamental_agent
 
 
 router = APIRouter(prefix="/api", tags=["Analysis"])
-executor = ThreadPoolExecutor(max_workers=6)
+executor = ThreadPoolExecutor(max_workers=10)
 
 
-def run_all_agents_sync(ticker: str) -> dict:
+async def run_all_agents_parallel(ticker: str) -> dict:
+    """Execute all 5 specialized agents in parallel for maximum performance."""
+    loop = asyncio.get_running_loop()
+    news_future = loop.run_in_executor(executor, run_news_agent, ticker)
+    tech_future = loop.run_in_executor(executor, run_technical_agent, ticker)
+    risk_future = loop.run_in_executor(executor, run_risk_agent, ticker)
+    macro_future = loop.run_in_executor(executor, run_macro_agent, ticker)
+    fund_future = loop.run_in_executor(executor, run_fundamental_agent, ticker)
+
+    news_res, tech_res, risk_res, macro_res, fund_res = await asyncio.gather(
+        news_future, tech_future, risk_future, macro_future, fund_future
+    )
+
     return {
-        "news": run_news_agent(ticker),
-        "technical": run_technical_agent(ticker),
-        "risk": run_risk_agent(ticker),
-        "macro": run_macro_agent(ticker),
-        "fundamental": run_fundamental_agent(ticker),
+        "news": news_res,
+        "technical": tech_res,
+        "risk": risk_res,
+        "macro": macro_res,
+        "fundamental": fund_res,
     }
 
 
@@ -35,8 +49,7 @@ async def analyze_stock(ticker: str):
     ticker = ticker.upper().strip()
 
     try:
-        loop = asyncio.get_event_loop()
-        agent_results = await loop.run_in_executor(executor, run_all_agents_sync, ticker)
+        agent_results = await run_all_agents_parallel(ticker)
 
         decision = generate_final_decision(agent_results)
         current_price = get_current_price(ticker)
@@ -50,19 +63,19 @@ async def analyze_stock(ticker: str):
 
             if name == "news":
                 factors = (getattr(result, "bullish_drivers", []) or []) + (getattr(result, "bearish_risks", []) or [])
-                summary = result.summary_explanation
+                summary = getattr(result, "summary_explanation", "")
             elif name == "technical":
                 factors = getattr(result, "key_signals", []) or []
-                summary = result.summary_explanation
+                summary = getattr(result, "summary_explanation", "")
             elif name == "risk":
                 factors = getattr(result, "key_risk_flags", []) or []
-                summary = result.summary_explanation
+                summary = getattr(result, "summary_explanation", "")
             elif name == "macro":
                 factors = getattr(result, "key_macro_factors", []) or []
-                summary = result.summary_explanation
+                summary = getattr(result, "summary_explanation", "")
             else:
                 factors = getattr(result, "key_fundamental_drivers", []) or []
-                summary = result.summary_explanation
+                summary = getattr(result, "summary_explanation", "")
 
             contributions.append(AgentContribution(
                 agent=name,
@@ -96,7 +109,7 @@ async def analyze_stock(ticker: str):
             price_at_recommendation=current_price
         )
 
-        # Save for learning + history
+        # Save for learning + research tracking
         try:
             rec_id = recommendations_collection.insert_one({
                 "ticker": ticker,
@@ -111,9 +124,9 @@ async def analyze_stock(ticker: str):
                 "created_at": datetime.utcnow(),
                 "evaluated": False
             }).inserted_id
-            print(f"📌 Saved recommendation to MongoDB collection 'recommendations' (ID: {rec_id})")
+            print(f"[INFO] Saved recommendation to MongoDB collection 'recommendations' (ID: {rec_id})")
         except Exception as db_err:
-            print(f"⚠️ Error saving recommendation to MongoDB: {db_err}")
+            print(f"[WARN] Error saving recommendation to MongoDB: {db_err}")
 
         return response
 
@@ -151,4 +164,50 @@ def get_latest_analysis(ticker: str):
         doc["created_at"] = doc["created_at"].isoformat()
     return doc
 
-    return doc
+
+@router.post("/evaluate")
+@router.get("/evaluate")
+def run_evaluation(days: int = Query(default=5, ge=0)):
+    """Run outcome evaluation loop on past recommendations to update agent performance weights."""
+    try:
+        evaluate_pending_recommendations(days=days)
+        return {"status": "success", "message": f"Evaluation completed for recommendations older than {days} days"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Evaluation failed: {str(e)}")
+
+
+@router.get("/export/recommendations")
+def export_recommendations(format: str = Query(default="json", pattern="^(json|csv)$")):
+
+    """Export recommendation data for offline backtesting and research reproducibility."""
+    docs = list(recommendations_collection.find({}, {"_id": 0}))
+    for d in docs:
+        if isinstance(d.get("created_at"), datetime):
+            d["created_at"] = d["created_at"].isoformat()
+
+    if format == "json":
+        return {"count": len(docs), "data": docs}
+    else:
+        # CSV output
+        import io
+        import csv
+        from fastapi.responses import Response
+
+        output = io.StringIO()
+        if docs:
+            fieldnames = list(docs[0].keys())
+            writer = csv.DictWriter(output, fieldnames=fieldnames)
+            writer.writeheader()
+            for doc in docs:
+                # Stringify dict fields for CSV clean format
+                clean_doc = {
+                    k: (str(v) if isinstance(v, (dict, list)) else v)
+                    for k, v in doc.items()
+                }
+                writer.writerow(clean_doc)
+        
+        return Response(
+            content=output.getvalue(),
+            media_type="text/csv",
+            headers={"Content-Disposition": "attachment; filename=emafis_recommendations.csv"}
+        )
