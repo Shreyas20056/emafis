@@ -132,6 +132,17 @@ export async function chatPortfolioApi(message: string, history: any[] = []) {
   });
 }
 
+export async function getPortfolioChatHistoryApi() {
+  return apiRequest("/api/portfolio/chat/history");
+}
+
+export async function clearPortfolioChatHistoryApi() {
+  return apiRequest("/api/portfolio/chat/history", {
+    method: "DELETE",
+  });
+}
+
 export async function getAgentPerformanceApi() {
   return apiRequest("/api/agent-performance");
 }
+

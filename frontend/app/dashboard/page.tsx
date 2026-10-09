@@ -14,6 +14,9 @@ import { Search, Sparkles, RefreshCw, Cpu, CheckCircle2, AlertCircle } from "luc
 
 const QUICK_TICKERS = [
   "RELIANCE",
+  "NIFTY 50",
+  "NIFTY BANK",
+  "NIFTY SMALLCAP",
   "TCS",
   "INFY",
   "HDFCBANK",
@@ -23,7 +26,10 @@ const QUICK_TICKERS = [
   "SUZLON",
   "ZOMATO",
   "CDSL",
+  "NVDA",
+  "AAPL"
 ];
+
 
 export default function DashboardPage() {
   const [ticker, setTicker] = useState("RELIANCE");

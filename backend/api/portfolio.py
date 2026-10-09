@@ -214,8 +214,33 @@ async def analyze_portfolio():
     )
 
 
-class PortfolioChatRequest(BaseModel):
+from database import portfolio_collection, portfolio_chats_collection
 
+USER_ID = "demo_user"
+
+
+@router.get("/chat/history")
+def get_chat_history():
+    """Retrieve saved portfolio chat messages for the current user."""
+    docs = list(portfolio_chats_collection.find({"user_id": USER_ID}, sort=[("created_at", 1)]).limit(100))
+    messages = []
+    for d in docs:
+        messages.append({
+            "sender": d.get("sender"),
+            "text": d.get("text"),
+            "timestamp": d.get("created_at").strftime("%H:%M") if isinstance(d.get("created_at"), datetime) else str(d.get("created_at", ""))
+        })
+    return {"messages": messages}
+
+
+@router.delete("/chat/history")
+def clear_chat_history():
+    """Clear portfolio chat history for the current user."""
+    portfolio_chats_collection.delete_many({"user_id": USER_ID})
+    return {"message": "Chat history cleared"}
+
+
+class PortfolioChatRequest(BaseModel):
     message: str
     history: list[dict] = []
 
@@ -223,7 +248,7 @@ class PortfolioChatRequest(BaseModel):
 @router.post("/chat")
 def chat_portfolio(req: PortfolioChatRequest):
     """
-    Real-time Multi-Agent Portfolio Chat Advisor endpoint.
+    Real-time Multi-Agent Portfolio Chat Advisor endpoint with MongoDB persistence.
     Discusses investment strategy, asset allocation, dip buying, and risk management.
     """
     doc = get_portfolio()
@@ -246,6 +271,16 @@ def chat_portfolio(req: PortfolioChatRequest):
     user_msg = req.message.strip()
     if not user_msg:
         raise HTTPException(400, "Message cannot be empty")
+
+    now = datetime.utcnow()
+
+    # Save user message to MongoDB
+    portfolio_chats_collection.insert_one({
+        "user_id": USER_ID,
+        "sender": "user",
+        "text": user_msg,
+        "created_at": now
+    })
 
     from core.llm import get_groq_llm
     from langchain_core.prompts import ChatPromptTemplate
@@ -286,7 +321,17 @@ Rules:
             f"and high-growth SmallCap stocks. Use systematic dip buying (SIP/staggered entry) during market corrections."
         )
 
+    # Save AI reply to MongoDB
+    ai_time = datetime.utcnow()
+    portfolio_chats_collection.insert_one({
+        "user_id": USER_ID,
+        "sender": "ai",
+        "text": reply_text,
+        "created_at": ai_time
+    })
+
     return {
         "reply": reply_text,
-        "timestamp": datetime.utcnow().isoformat()
-    }
+        "timestamp": ai_time.strftime("%H:%M")
+    }
+

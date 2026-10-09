@@ -34,6 +34,7 @@ recommendations_collection: Collection = db["recommendations"]
 portfolio_collection: Collection = db["portfolios"]
 agent_performance_collection: Collection = db["agent_performance"]
 users_collection: Collection = db["users"]
+portfolio_chats_collection: Collection = db["portfolio_chats"]
 
 
 def init_db():
@@ -44,7 +45,9 @@ def init_db():
         portfolio_collection.create_index("user_id", unique=True)
         users_collection.create_index("email", unique=True)
         agent_performance_collection.create_index("agent", unique=True)
+        portfolio_chats_collection.create_index([("user_id", 1), ("created_at", 1)])
         print("[OK] Database connected & indexes ready")
+
 
         # Initialize agent performance collection in MongoDB
         from core.learning import init_agent_performance

@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { MessageSquare, Send, Sparkles, Bot, User, RefreshCw, ChevronDown, ChevronUp } from "lucide-react";
-import { chatPortfolioApi } from "@/lib/api";
+import { MessageSquare, Send, Sparkles, Bot, User, RefreshCw, ChevronDown, ChevronUp, Trash2 } from "lucide-react";
+import { chatPortfolioApi, getPortfolioChatHistoryApi, clearPortfolioChatHistoryApi } from "@/lib/api";
+
 
 interface ChatMessage {
   sender: "user" | "ai";
@@ -11,13 +12,7 @@ interface ChatMessage {
 }
 
 export default function PortfolioChat() {
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      sender: "ai",
-      text: "Namaste! I am your EMAFIS Real-Time Portfolio Chat Advisor. Ask me anything about your Indian stock positions (NIFTY 50 / SmallCap), asset allocation, dip buying, or risk strategy!",
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    },
-  ]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
@@ -28,8 +23,47 @@ export default function PortfolioChat() {
   };
 
   useEffect(() => {
+    async function loadHistory() {
+      try {
+        const res = await getPortfolioChatHistoryApi();
+        if (res && res.messages && res.messages.length > 0) {
+          setMessages(res.messages);
+        } else {
+          setMessages([
+            {
+              sender: "ai",
+              text: "Namaste! I am your EMAFIS Real-Time Portfolio Chat Advisor. Ask me anything about your Indian stock positions (NIFTY 50 / SmallCap), asset allocation, dip buying, or risk strategy!",
+              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            },
+          ]);
+        }
+      } catch (err) {
+        console.warn("Could not load chat history:", err);
+      }
+    }
+    loadHistory();
+  }, []);
+
+  useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  const handleClearHistory = async () => {
+    if (!confirm("Clear portfolio chat history?")) return;
+    try {
+      await clearPortfolioChatHistoryApi();
+      setMessages([
+        {
+          sender: "ai",
+          text: "Chat history cleared. How can I assist with your portfolio strategy today?",
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        },
+      ]);
+    } catch (err) {
+      console.error("Failed to clear chat:", err);
+    }
+  };
+
 
   const handleSend = async (textToSend?: string) => {
     const msg = (textToSend || input).trim();
@@ -95,12 +129,22 @@ export default function PortfolioChat() {
           </div>
         </div>
 
-        <button
-          onClick={() => setIsMinimized(!isMinimized)}
-          className="rounded p-1 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
-        >
-          {isMinimized ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={handleClearHistory}
+            title="Clear Chat History"
+            className="rounded p-1 text-slate-400 hover:bg-slate-800 hover:text-rose-400 transition"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+          <button
+            onClick={() => setIsMinimized(!isMinimized)}
+            className="rounded p-1 text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition"
+          >
+            {isMinimized ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+          </button>
+        </div>
+
       </div>
 
       {!isMinimized && (
